@@ -1,0 +1,55 @@
+version: "3.8"
+services:
+  postgres:
+    image: postgres:11.6
+    restart: always
+    environment:
+      - POSTGRES_USER=redash
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=redash
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+    ports:
+      - "5432:5432"
+  redis:
+    image: redis:5.0-alpine
+    restart: always
+  init:
+    image: redash/redash:8.0.2.b37747
+    depends_on:
+      - postgres
+      - redis
+    command: /bin/bash -c "sleep 15 && ./manage.py database create_tables"
+    environment:
+      - REDASH_WEB_WORKERS=4
+      - REDASH_DATABASE_URL=postgres://redash:password@postgres:5432/redash
+      - REDASH_REDIS_URL=redis://redis:6379/0
+  server:
+    image: redash/redash:8.0.2.b37747
+    depends_on:
+      - postgres
+      - redis
+      - init
+    command: server
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - REDASH_WEB_WORKERS=4
+      - REDASH_DATABASE_URL=postgres://redash:password@postgres:5432/redash
+      - REDASH_REDIS_URL=redis://redis:6379/0
+  worker:
+    image: redash/redash:8.0.2.b37747
+    depends_on:
+      - postgres
+      - redis
+    command: scheduler
+    environment:
+      - QUEUES=queries,scheduled_queries,celery
+      - WORKERS_COUNT=1
+      - REDASH_DATABASE_URL=postgres://redash:password@postgres:5432/redash
+      - REDASH_REDIS_URL=redis://redis:6379/0

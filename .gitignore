@@ -1,3 +1,5 @@
 infrastructure/.terraform
 infrastructure/terraform.tfstate
 infrastructure/terraform.tfstate.backup
+
+postgres_data
